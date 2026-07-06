@@ -31,7 +31,7 @@ jobs:
         env:
           NODE_LINK: ${{ secrets.NODE_LINK }}
         run: |
-          bash <(wget -qO- https://main.ssss.nyc.mn/setup_proxy.sh)
+          bash <(wget -qO- https://gist.githubusercontent.com/janver/cd413d3ca91951a61b13af244a36b134/setup_proxy.sh)
 
       - name: 🚀 运行续期脚本
         env:
