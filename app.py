@@ -277,7 +277,7 @@ def solve_turnstile(sb, timeout=90, tag="Turnstile", first_wait=8) -> bool:
 def handle_turnstile(sb) -> bool:
     print("🛡️ 处理 Turnstile 验证...")
     return solve_turnstile(sb, timeout=90, tag="Turnstile", first_wait=8)
-    
+
 # 获取当前出口ip
 def get_current_ip(proxy_server: str = "") -> str:
     proxies = None
@@ -490,13 +490,19 @@ def main():
 
             # 点击续期按钮
             print("⏳ 等待续期按钮可用并点击...")
-            time.sleep(5) 
+            time.sleep(5)
 
-            modal_button_clicked = False
+            modal_button = 'div[role="dialog"] button.btn-primary'
+            # SeleniumBase 的 click() 只等元素可见, 不检查 disabled: 点 disabled 按钮不报错, 直接空转,
+            # 所以这里单独确认一次按钮状态(读状态失败不影响后面的点击)
             try:
-                selector = 'div[role="dialog"] button.btn-primary' 
-                sb.click(selector, timeout=8)
-                modal_button_clicked = True
+                if sb.get_attribute(modal_button, "disabled", timeout=5, hard_fail=False):
+                    print("⚠️ 续期按钮仍是 disabled 状态, Turnstile 可能未真正通过")
+            except Exception as e:
+                print(f"⚠️ 读取续期按钮状态失败: {e}")
+
+            try:
+                sb.click(modal_button, timeout=8)
                 print("✅ 已点击续期按钮")
             except Exception as e:
                 print(f"续期按钮点击失败: {e}")
@@ -535,6 +541,14 @@ def main():
                     )
                 else:
                     print("⚠️ 续期结果未知，到期日期未变化，请手动检查")
+                    # 保存现场, 便于确认这一步是"点击空转"还是"后端拒绝了"
+                    try:
+                        sb.save_screenshot("renew_unknown.png")
+                        with open("renew_unknown.html", "w", encoding="utf-8") as f:
+                            f.write(sb.get_page_source())
+                        print("📄 已保存现场: renew_unknown.png / renew_unknown.html")
+                    except Exception as e:
+                        print(f"⚠️ 保存现场失败: {e}")
                     send_telegram_message(
                         format_notification(
                             "⚠️ 续期可能未成功",
